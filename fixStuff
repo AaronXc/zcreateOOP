@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+
+import subprocess
+import re
+import os
+import sys
+from optparse import OptionParser
+
+name = subprocess.Popen(["zpool", "status"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+for line in name:
+    nameLine = re.search("^\s+(pool).+&=$", line)
+    if nameLine != None:
+        for i in range(20):
+            nameWS = re.search("^\s+pool:\s+name\s{i}$")
+            if nameWS != None:
+                print(i)
+    else:
+        break

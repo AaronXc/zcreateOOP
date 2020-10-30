@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+
+import subprocess
+import re
+import os
+import sys
+from optparse import OptionParser
+  
+        
+parser = OptionParser()
+
+
+class Stuff:
+    def __init__(self ):
+        self.num = "not good"
+    def foo(self, options, opt_str, value, parser, *args):
+        if '-b' in parser.rargs:
+            for arg in parser.rargs:
+                if arg != '-b' and parser.rargs[parser.rargs.index(arg)-1] != '-b':
+                    parser.rargs.remove(arg)
+                    parser.rargs.insert(0, None)
+            if len(parser.rargs) != 0:
+                while parser.rargs[parser.rargs.count(None)-1] == None:
+                    parser.rargs.pop(parser.rargs.count(None)-1)
+                    if len(parser.rargs) == 0:
+                        break
+            print("reassigning self.num to: {r}".format(r=parser.rargs[1]))
+            self.num = parser.rargs[1]
+        for arg in parser.rargs:
+            parser.rargs.remove(arg)
+            parser.rargs.insert(0, None)
+            if len(parser.rargs) != 0:
+                while parser.rargs[parser.rargs.count(None)-1] == None:
+                    parser.rargs.pop(parser.rargs.count(None)-1)
+                    if len(parser.rargs) == 0:
+                        break                  
+        if self.num != "not good":
+            print("this idea might just work")
+            
+    def set_a_var(self, option, opt_str, value, parser, *args):
+        self.num = value
+        
+        
+def main():
+
+    St = Stuff()   
+    parser.add_option("-a", "--set-ashift-value", action="callback", callback=St.foo, help="if you have to ask, you'll never know")
+    parser.add_option("-b", "--set-new-num", type=str, action="callback", callback=St.set_a_var, help="set a test")
+    parser.add_option("-c", "--sogadamangry", action="store_true", dest="place", help="set a test")
+    parser.add_option("-d", "--ffff", action="store_true", dest="another_place", help="set a test")
+    (values, args) = parser.parse_args()
+
+if __name__ == "__main__":
+    main()
+   

@@ -1,0 +1,22 @@
+test								expected						result
+
+1) ./zcreateOOP   						prepare default pool but don't build			expected
+
+2) ./zcreateOOP -b 						prepare and build default pool				have to use -f to force different sized devices in the same pool
+
+3) ./zcreateOOP -b -c 						build a custom pool: 					expected, after fixing a bug where there could be no whitespace entered after the raid level. Bug: created indestrucible pool, 
+								-mirror, raidz1,2,3, stripe			        not sure what I did other than enter a space after the pool name
+
+4) ./zcreateOOP-b -C hdd					build a pool with all hdd				likely would work but the default raidz2 is used and there aren't enough available pools to make that work
+
+5) ./zcreateOOP-b -C ssd					build a pool with all ssd				expected
+
+6) ./zcreateOOP-b -C hDD					build a pool with all hdd				same problem as for test 4)
+
+7) ./zcreateOOP -b -C SsD					build a pool with all hdd				expected
+
+8) ./zcreateOOP -D -n zpool 					destroy the zpool named zpool				expected
+
+9) ./zcreateOOP -D -n zpool -q -f -b -a 12 -C hdd -z 		destroy the zpool named zpool and nothing else		expected
+
+10)./zcreateOOP -q -f -b -a 12 -C hdd -z -D -n zpool 		destroy the zpool named zpool and nothing else

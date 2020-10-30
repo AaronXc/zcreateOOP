@@ -1,0 +1,12 @@
+#!/usr/bin/env python3 
+
+ZPNS = { 'name1': vdev1, 'name2': vdev2, 'name3': vdev3}
+vdev1 = {'mirror': mirrorDrives 'raidz1': raidz1Drives}
+vdev2 = {'raidz1': raidz1Drives raidz2: raidz2Drives} 
+vdev3 = {'raidz2: raidz2Drives}
+
+MirrorDrives = [ sda, sdb]
+raidz1Drives = [etc you get the point
+raidz1Drives
+raidz2Drives
+raidz2Drives

@@ -1,0 +1,303 @@
+#!/usr/bin/env python3
+import subprocess
+import re
+import os
+import sys
+from optparse import OptionParser
+
+g_commandLine = ["zpool"]
+g_keywords = {"universal_newlines": True}
+
+class Zpool_options():
+    def __init__(self):
+        self.subprocess_keywords = {"universal_newlines": True}
+        self.build = False
+        self.quiet = False
+        self.options = []
+    
+    def set_ashift(self, option, opt_str, value, parser, *args, **kwargs):
+        for arg in args:
+            print(arg)
+        print("the integer entered by the user was: {v}".format(v=value))
+        self.options.extend(["-o", "ashift="+value])
+        
+    def force(self, option, opt_str, value, parser, *args, **kwargs):
+        print("the force option was used.")
+        self.options.append("-f")
+        
+    def set_mount_point(self, option, opt_str, value, parser, *args, **kwargs):
+        print("the mount point entered by the user was: {mp}".format(mp=value))
+        self.options.extend(["-m", value])
+
+    def silencer(self, option, opt_str, value, parser, *args, **kwargs):
+        print("the quiet option was entered by the user")    
+        self.quiet = True
+        self.subprocess_keywords["stdout"]=subprocess.PIPE 
+        self.subprocess_keywords["stderr"]=subprocess.PIPE
+    
+    
+class Device:
+    def __init__(self, mediaType, storageDevice, aliasName):
+        self.m_type = mediaType
+        self.s_device = storageDevice
+        self.alias = aliasName
+
+class Zpool_devices:
+    def __init__(self, dev): #dev should be a list of Devices, as in the class Device
+        self.devices = dev
+        devs = subprocess.Popen(["zpool", "status"], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+        for line in devs:
+            regex = re.search("^\s+([a-zA-Z]+).+$", line)
+            for device in self.devices:
+                if regex != None and regex.group(1) != None and regex.group(1) == device.s_device:
+                    self.devices.remove(device)
+        self.drives_count = len(self.devices) 
+            
+    def set_drives_count(self, options, opt_str, value, parser):
+        if self.drives_count >= value:
+            self.drives_count = value
+            print(" the drive quantity will be: {dq}".format(dq=value))
+        else:
+            print("not enough drives available for that pool")
+            sys.exit("number of available drives is less than desired number of drives")
+        
+    def elim(self, options, opt_str, value, parser): 
+        
+        if value.lower() == "ssd":
+            for device in self.devices:
+                if device.m_type == "HDD":
+                    self.devices.insert(0, None) 
+                    self.devices.remove(device)
+            if len(self.devices) != 0:
+                while self.devices[self.devices.count(None)-1] == None:
+                    self.devices.pop(self.devices.count(None)-1)
+                    if len(self.devices) == 0:
+                        break
+            print("HDDs eliminated")    
+        elif value.lower() == "hdd":
+            for device in self.devices:
+                if device.m_type == "SSD":
+                    self.devices.insert(0, None)
+                    self.devices.remove(device)
+            if len(self.devices) != 0:
+                while self.devices[self.devices.count(None)-1] == None:
+                    self.devices.pop(self.devices.count(None)-1)
+                    if len(self.devices) == 0:
+                        break
+            print("SSDs eliminated")
+        else:
+            raise optionValueError("the argument for this option must be either ssd or hdd (non-case sensitive)")
+        self.drives_count = len(self.devices)
+            
+        
+class Zpool_settings:
+    def __init__(self):
+        self.vdev_quantity=1
+        self.name="zpool"
+        self.raid_level="raidz2"
+    def set_vdev_quantity(self, options, opt_str, value, parser, *args, **kwargs):
+        print("the vdev quantity will be: {vd}".format(vd=value))
+        self.vdev_quantity = value
+    def set_zpool_name(self, options, opt_str, value, parser, *args, **kwargs):
+        print("the zpool name will be: {n}".format(n=value))
+        self.name = value
+    def set_raid_level(self, options, opt_str, value, parser, *args, **kwargs):
+        self.raid_level = value
+        print("the raid level will be: {r}".format(r=value))
+    def destroy(self, options, opt_str, value, parser):
+        #if not parser.values.n:
+        #   raise optionValueError("missing option -n [name] to destroy zpool")
+        if '-n' in parser.rargs:
+            for arg in parser.rargs:
+                if arg != '-n' and parser.rargs[parser.rargs.index(arg)-1] != '-n':
+                    parser.rargs.remove(arg)
+                    parser.rargs.insert(0, None)
+            if len(parser.rargs) != 0:
+                while parser.rargs[parser.rargs.count(None)-1] == None:
+                    parser.rargs.pop(parser.rargs.count(None)-1)
+                    if len(parser.rargs) == 0:
+                        break
+            self.name = parser.rargs[1]
+        for arg in parser.rargs:
+            parser.rargs.remove(arg)
+            parser.rargs.insert(0, None)
+            if len(parser.rargs) != 0:
+                while parser.rargs[parser.rargs.count(None)-1] == None:
+                    parser.rargs.pop(parser.rargs.count(None)-1)
+                    if len(parser.rargs) == 0:
+                        break                  
+        print("Destroying {z}, You sure? \nPress any to continue".format(z=self.name), end = ' ')
+        input()
+        choice = input("ALL data will be lost. Continue?(y/N)")
+        choosing = True
+        while choosing == True:
+            if choice == "y":
+                subprocess.run(["zpool", "destroy", self.name], universal_newlines=True).stdout 
+                choosing = False
+            elif choice == "N":
+                choosing == False
+            else:
+                while choice != "y" and choice != "N":
+                    choice = input("Invalid choice: {c}. valid choices are: y/N".format(c=choice))  
+        
+    def build(self, options, opt_str, value, parser, *args, **kwargs):
+        self.build = True
+        print("build attribute set")
+                    
+def customsort(options, opt_str, value, parser): 
+    #if subprocess.run(["test", "-e", options.mount_point+"/z.tmp" ], stdout = subprocess.PIPE, universal_newlines = True).stdout == 0:
+    #   subprocess.run(["rm", "-f", options.mount_point+"/z.tmp"], stdout=subprocess.PIPE, universal_newlines=True)
+    subprocess.run(["lsdev"], universal_newlines=True)
+    vdevs_count = int(input("number of vdevs: "))
+    raid_level = [input("RAID level: ")] 
+    zpool_name = input("Pool name: ")
+    zpool_name = zpool_name.strip()
+    raid_level[0]=raid_level[0].strip()
+    if raid_level[0] == "stripe":
+       raid_level = [None]
+    i=0
+    VDEVS = ["create", zpool_name]
+    while i < vdevs_count:  
+        devices = input("VDEV_{index}: ".format(index = i))
+        devices = devices.split()
+        VDEVS+=raid_level+devices
+        i+=1
+    makeCommandLine(VDEVS)
+    
+   
+
+def init_zpool_devices():
+    devices = []
+    lsdev = subprocess.Popen(["lsdev", "-tdn"], stdout=subprocess.PIPE, universal_newlines=True).stdout
+    for line in lsdev:
+        regex = re.findall("(\d+-\d+)\s+\(/dev/([a-z]+),([a-zA-Z]+)\)", line)
+        if len(regex) >= 1:
+            i = 0
+            while i <= len(regex)-1:
+                devices.append(Device(regex[i][2], regex[i][1], regex[i][0]))
+                i+=1
+    return devices   
+        
+def autosort(Zpool_opts, Zpool_dev, Zpool_sett):
+    if Zpool_sett.raid_level == "stripe":
+        Zpool_sett.raid_level=None
+    VDEVS = [Zpool_sett.name]
+    if Zpool_sett.vdev_quantity == 0:
+        print("0 vdevs specified. There must be at least 1 vdev to create a pool")
+    else:
+        drivespVDEV = int(Zpool_dev.drives_count/Zpool_sett.vdev_quantity)   
+        index = 0
+        for j in range(Zpool_sett.vdev_quantity):
+            temp_list = [Zpool_sett.raid_level]
+            for i in range(drivespVDEV):
+                temp_list.append(Zpool_dev.devices[index].s_device) 
+                index += 1
+            VDEVS+=temp_list 
+        g_commandLine.append("create")
+        makeCommandLine(VDEVS)
+
+def makeCommandLine(VDEVS):
+    for i in VDEVS:
+            if i == None:
+                VDEVS.remove(None)
+    for i in VDEVS:
+            g_commandLine.append(i)
+            
+def destroyCommandLine(sysargv, needed_opts):
+    opts = [key for key in needed_opts.keys()]
+    for arg in sysargv:
+        if arg not in opts and arg != sysargv[0]:
+            for key in opts:
+                for i in range(needed_opts[key]):
+                    if sysargv[sysargv.index(arg)-(i+1)] != key:
+                        sysargv.remove(arg)
+                        sysargv.insert(0, None)
+    if len(sysargv) != 0:
+        while sysargv[sysargv.count(None)-1] == None:
+            sysargv.pop(sysargv.count(None)-1)
+            if len(sysargv) == 0:
+                break  
+           
+def sortCMD(sysargv):
+    if '-D' in sysargv:
+        destroyCommandLine(sysargv, {'-D': 0, '-n': 1} )
+    elif '-c' in sysargv:
+        destroyCommandLine(sysargv, {'-c': 0}) 
+    userOrder = sysargv.copy()
+    order = ['-D', '-c', '-C', '-d', '-n', '-v', '-l', '-q', '-f', '-b', '-a', '-m', '-t', '-z']
+    j = 1
+    for i in order: #put the options and their arguments in the order that is desired. if the option is invalid, treat it as an argument and let the other option parser handle the error
+        if i in userOrder:
+            placing = userOrder.index(i)
+            backOtheLine=sysargv[j]
+            sysargv[j] = i
+            dealWithDuplicates(sysargv, j, i)
+            print(sysargv)
+            j+=1
+            l=1
+            while placing+l < len(userOrder) and userOrder[placing+l] not in order:
+                sysargv[j] = userOrder[placing+l]
+                l+=1
+    print(sys.argv)
+    dealWithDuplicates(sysargv, j, i)
+    
+def dealWithDuplicates(sysargv, j, i):
+    for k in range(len(sysargv)-1):
+        if k != j and sysargv[k] == i:
+            sysargv.pop(k)
+            print(sysargv)
+            if placing != j:
+                sysargv.append(backOtheLine)
+def main():
+    Zpool_opts = Zpool_options()
+    devices = init_zpool_devices()
+    Zpool_dev = Zpool_devices(devices)
+    Zpool_sett = Zpool_settings()
+    parser = OptionParser()
+    parser.add_option("-a", "--set-ashift-value", action="callback", type=str, callback=Zpool_opts.set_ashift, help="[-a] Set ashift value")
+    parser.add_option("-b", "--build", action="callback", callback=Zpool_sett.build, help="-b: Build Flag. Include to build the array")
+    parser.add_option("-C", "--create-using-drive-type", action="callback", type=str, callback=Zpool_dev.elim, help="[-C] Device class. Only use this type of device. \
+            '\n' Default: Use all drive '\n' Options: hdd, ssd")
+    parser.add_option("-c", "--custom", action="callback", callback=customsort, help="[-c] Custom Flag. Include for manual pool configuration")
+    parser.add_option("-D", "--destroy", action="callback", callback=Zpool_sett.destroy, help="destroy zpool")
+    parser.add_option("-d", "--set-drives_count", action="callback", type=int, callback=Zpool_dev.set_drives_count, help="set quantity of drives to use")
+    parser.add_option("-f", "--force", action="callback", callback=Zpool_opts.force, help="force action")
+    parser.add_option("-l", "--RAID level", action="callback", type=str, callback=Zpool_sett.set_raid_level, help="[-l] Specify RAID level '\n'     Default is raidz2 '\n'      Options: raidz[123], mirror, stripe")
+    parser.add_option("-m", "--set-mount-point", action="callback", type=str, callback=Zpool_opts.set_mount_point, help="set mount point")
+    parser.add_option("-n", "--name-pool", action="callback", type=str, callback=Zpool_sett.set_zpool_name, help="[-n] Specify zpool name. Defaults to zpool")
+    parser.add_option("-q", "--quiet", action="callback", callback=Zpool_opts.silencer, help="don't show stdout stream. Don't print details")
+    parser.add_option("-v", "--set-vdev-quantity", action="callback", type=int, callback=Zpool_sett.set_vdev_quantity, help="set quantity of the vdevs")
+    parser.add_option("-z", "--debug", action="store_true", default=False, dest="debug", help="[-z] Debug flag. Prints all varibles&temp files to terminal")
+    sysargv = sys.argv
+    sortCMD(sysargv)
+    (options, args) = parser.parse_args()
+    
+    if options.debug == True:
+        print("drive count: {dc} \n raid level: {rl} \n zpool name: {zpn} \n vdev count: {vdc} \n drives/vdev: {dpd}".format(dc=Zpool_dev.drives_count,\
+        rl=Zpool_sett.raid_level, zpn=Zpool_sett.name, vdc=Zpool_sett.vdev_quantity, dpd="coming soon"))
+        print("the list of available drives:")
+        for i in Zpool_dev.devices:
+            print("{t} {sd} {al}".format(t=i.m_type, sd=i.s_device, al=i.alias))
+        
+        
+    for key in Zpool_opts.subprocess_keywords:
+        g_keywords[key] = Zpool_opts.subprocess_keywords[key]   
+    if not '-D' in sys.argv and not '-c' in sys.argv:
+        autosort(Zpool_opts, Zpool_dev, Zpool_sett)
+    for i in Zpool_opts.options:
+            g_commandLine.append(i)
+            
+    if Zpool_opts.quiet == False and '-D' not in sys.argv:
+        for i in g_commandLine:
+            print(i, end = ' ')
+        print(' ')
+    if Zpool_sett.build == True or '-c' in sys.argv:
+        subprocess.run(g_commandLine, **g_keywords).stdout    
+    if Zpool_sett.build != True and '-D' not in sys.argv and '-c' not in sys.argv and Zpool_opts.quiet == False:
+        print("Use -b flag to build the above pool'\n'Use -h flag for more options")
+    
+        
+    
+    
+if __name__ == "__main__":
+    main()
