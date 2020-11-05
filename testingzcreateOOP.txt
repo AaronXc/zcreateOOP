@@ -2,21 +2,65 @@ test								expected						result
 
 1) ./zcreateOOP   						prepare default pool but don't build			expected
 
-2) ./zcreateOOP -b 						prepare and build default pool				have to use -f to force different sized devices in the same pool
+2) ./zcreateOOP -b 						prepare and build default pool				have to use -f to force different sized devices in the same pool 
 
-3) ./zcreateOOP -b -c 						build a custom pool: 					expected, after fixing a bug where there could be no whitespace entered after the raid level. Bug: created indestrucible pool, 
-								-mirror, raidz1,2,3, stripe			        not sure what I did other than enter a space after the pool name
+3) ./zcreateOOP -c 						build a custom pool: 					expected, after fixing a bug where there could be no whitespace entered after the raid level. Bug: created
+															indestrucible pool, -mirror, raidz1,2,3, stripe not sure what I did other than enter a space after the pool
+															name. fixed the bug by getting rid of trailing whitespace.
 
-4) ./zcreateOOP-b -C hdd					build a pool with all hdd				likely would work but the default raidz2 is used and there aren't enough available pools to make that work
+4) ./zcreateOOP -b -C hdd					build a pool with all available hdds			expected
 
-5) ./zcreateOOP-b -C ssd					build a pool with all ssd				expected
+5) ./zcreateOOP -b -C ssd					build a pool with all available ssds			expected
 
-6) ./zcreateOOP-b -C hDD					build a pool with all hdd				same problem as for test 4)
+6) ./zcreateOOP -b -C hDD					build a pool with all available hdds			same problem as for test 4)
 
-7) ./zcreateOOP -b -C SsD					build a pool with all hdd				expected
+7) ./zcreateOOP -b -C SsD					build a pool with all available hdds			expected
 
-8) ./zcreateOOP -D -n zpool 					destroy the zpool named zpool				expected
+8) ./zcreateOOP -D -n zpool 					prompt the user to destroy the zpool, don't show the    expected
+								underlying command that was run to destroy the pool			
 
-9) ./zcreateOOP -D -n zpool -q -f -b -a 12 -C hdd -z 		destroy the zpool named zpool and nothing else		expected
+9) ./zcreateOOP -D -n zpool -q -f -b -a 12 -C hdd -z 		destroy the zpool named zpool and nothing else		complain that the -D option cannot be used with the -C option
 
-10)./zcreateOOP -q -f -b -a 12 -C hdd -z -D -n zpool 		destroy the zpool named zpool and nothing else
+10)./zcreateOOP -q -f -b -a 12 -C hdd -z -D -n zpool 		destroy the zpool named zpool and nothing else          expected
+
+11)./zcreateOOP -b -q (for pool that can't be built)            give an error message but don't show anything else	expected
+
+12)./zcreateOOP -b -q (for a pool that can be built)            silently build the pool                                 expected
+
+13)./zcreateOOP -D -n [non-existant pool]                       give an error message and nothing else			expected
+
+14)./zcreateOOP -D -n [existing pool]    			prompt the user to destroy the zpool, don't show the    expected
+								underlying command that was run to destroy the pool
+
+15)./zcreateOOP -b -a [12]					set the ashift value for a pool and build it            expected (checked using zdb)
+
+16)./zcreateOOP -b -v [integer]					set the number of vdevs for a pool and build it		expected
+
+17)./zcreateOOP -b -l [raidz123,mirror,stripe]			set the RAID level for a pool and build it		expected
+
+18)./zcreateOOP -b -m [/mnt/{name}]				set the mount point for a pool and build it             expected
+
+19)./zcreateOOP -b -d [integer] 				set the drive quantity fot a pool and build it          expected
+
+20)./zcreateOOP -b -n 						set the name of the pool and build it 			expected					
+
+21)./zcreateOOP -b -f 						force a pool to use devices of different sizes       	expected
+
+22)./zcreateOOP -b -a -v -l -m -d -C -n                         create a pool with the attributes specified 		expected
+								by the user 
+
+23)test 22) except with conflicting options for			exit with an error message that advises the user	expected
+   the number of drives and the number of drives                that there are not enough drives available for the
+   of the selected media type				        desired pool.
+
+24)./zcreateOOP -z						show the debug information for a pool to be built,      expected
+								but don't build the pool
+   								
+25) test the -n, -l, -v, -d, -a, -m, -f and -C			display the pool that would be attempted to be		expected
+    options without any -b command.				built if the -b command was entered, and tell the
+								user to use the -b command to build the pool 
+
+26)./zcreateOOP -q						tell the user to use -b to build the pool, without	expected
+								showing what the pool would be. 
+     
+   
