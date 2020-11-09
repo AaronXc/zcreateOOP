@@ -12,7 +12,7 @@ test								expected						result
 
 5) ./zcreateOOP -b -C ssd					build a pool with all available ssds			expected
 
-6) ./zcreateOOP -b -C hDD					build a pool with all available hdds			same problem as for test 4)
+6) ./zcreateOOP -b -C hDD					build a pool with all available hdds			expected
 
 7) ./zcreateOOP -b -C SsD					build a pool with all available hdds			expected
 
@@ -27,7 +27,7 @@ test								expected						result
 
 12)./zcreateOOP -b -q (for a pool that can be built)            silently build the pool                                 expected
 
-13)./zcreateOOP -D -n [non-existant pool]                       give an error message and nothing else			expected
+13)./zcreateOOP -D -n [non-existent pool]                       give an error message and nothing else			expected
 
 14)./zcreateOOP -D -n [existing pool]    			prompt the user to destroy the zpool, don't show the    expected
 								underlying command that was run to destroy the pool
@@ -62,5 +62,11 @@ test								expected						result
 
 26)./zcreateOOP -q						tell the user to use -b to build the pool, without	expected
 								showing what the pool would be. 
+
+27)./zcreateOOP -C -f						error mesage that says -f is not a valid argument	fixed the bug by exiting the program if the right number of arguments aren't entered.
+								The error message should say that an argument is	This doesn't allow variable number of arguments
+						                needed, but instead it says that -f is not an
+								accepted argument. This means it is possible to use 
+								things that shouldn't be used as arguments. 				
      
    

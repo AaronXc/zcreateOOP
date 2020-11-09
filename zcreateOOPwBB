@@ -68,54 +68,39 @@ class Functionality_settings: # the hard coded precedence of what operations to 
 #          sysargv: the command line, represented as a list of strings
 ##############################################################################################################################################################################       
     def sortCMD(self, sysargv):
-        userOrder = sysargv.copy()
-        order = self.order
+        userEntries = sysargv.copy()
+        correctOrder = self.order
         j = 1
         print("'-n', '-D', '-c','-C', '-d', '-v', '-l', '-q', '-f', '-b', '-a', '-m', '-z'")
-        for i in order: #put the options and their arguments in the order that is desired. if the option is invalid, treat it as an argument and let the other option parser handle the error
-            if i in userOrder:
-                placing = sysargv.index(i)
-                n=1                        # index for changing the list item referred to when there are multiple list items to move to the end of the command line
-                m=1                        # index for changing the list item referred to when there are multiple list items to be moved ahead in the command line
-                if placing != j:
-                    if j+n < len(userOrder) and sysargv[j+n] not in order:
-                        while j+n < len(userOrder) and sysargv[j+n] not in order:
-                            n+=1
-                        backOtheLine=sysargv[(j):(j+n)]                         #move an option and its arguments to the end of the line
-                        del sysargv[(j+1):(j+n)]
-                        sysargv[j] = i
-                        sysargv+=backOtheLine
-                        placing -= (n-1)
-                    else:
-                        backOtheLine=sysargv[j] #temporarily store the option that is about to be replaced 
-                        sysargv[j] = i         
-                        sysargv.append(backOtheLine)                            #move the option with no arguments to the end of the line               
-                while placing+m < len(sysargv) and sysargv[placing+m] not in order: # treat anything directly after the option as an argument if it is not in the list "order"
-                    sysargv.insert((j+m), sysargv[placing+m])    # insert the arguments directly following the new position of the option
-                    argIndex=placing+m+1                          
-                    sysargv.pop(argIndex)                        # pop the argument in the old postion off the list
-                    m+=1
-                self.deleteDuplicates(sysargv, j, i)   #get the index of where the next option belongs and store it in j
-                j+=m  
+        for option in correctOrder: #put the options and their arguments in the order that is desired. if the option is invalid, treat it as an argument and let the other option parser handle the error
+            if option in userEntries:
+                placing = sysargv.index(option)
+                nargs=1                        # number of arguments to move 'to the end of' or 'ahead in' the command line                        
+                if j+nargs < len(userEntries)-1:
+                    while j+nargs < len(userEntries) and sysargv[j+nargs] not in correctOrder:
+                        nargs+=1
+                    backOfTheLine=sysargv[(j):(j+nargs)]                         #move stuff that is in the way out of the way
+                    if nargs-1 != self.needed_args[sysargv[j]]:
+                        sys.exit("The {o} option requires {required} argument(s), {number} entered".format(o=sysargv[j], required=self.needed_args[sysargv[j]], number=nargs-1))
+                    if placing != j:
+                        del sysargv[(j+1):(j+nargs)]
+                        sysargv+=backOfTheLine                       #move the option with no arguments to the end of the line
+                        placing -= nargs-1 
+                    while nargs != 1:
+                        nargs-=1
+                    while placing+nargs< len(sysargv) and sysargv[placing+nargs] not in correctOrder: # treat anything directly after the option as an arguargsToFrontent if it is not in the list "order"
+                        nargs+=1
+                    if placing != j:
+                        moveTheseToj = sysargv[(placing):(placing+nargs)]    # insert the arguargsToFrontents to where they have to be
+                        del sysargv[(placing):(placing+nargs)]
+                        sysargv[j:j] = moveTheseToj # pop the arguargsToFrontent in the old postion off the list
+                        del sysargv[j+nargs]
+                elif self.needed_args[sysargv[j]] != 0:             #change the index of the option that is being sorted accordingly
+                    sys.exit("The {o} option requires {required} argument(s), 0 entered".format(o=sysargv[j], required=self.needed_args[sysargv[j]]))
+                j+=nargs
                 print(sysargv)
         
         self.checkCommandLine(sysargv) 
-        
-##############################################################################################################################################################################
-#deleteDuplicates function:
-#   function used by sortCMD to get rid of the duplicates in the command line.
-#Arguments:
-#    [j] is the current position within the command line [list representation] that is being "looked at" and thus is not yet sorted
-#    [i] is an option from the 'order' attribute
-#    [sysargv] is a list of strings, representing the command line    
-##############################################################################################################################################################################  
-    def deleteDuplicates(self, sysargv, j, i): #get rid of duplicates of the command (i) that are not located at the index that j has stored
-        for k in range(len(sysargv)):
-            if k != j and sysargv[k] == i: #this works on the assumption that no options should be entered twice as the current choices of options stand
-                sysargv.pop(k)              
-                sysargv.insert(0, None)
-        while None in sysargv and len(sysargv)!=None:
-            sysargv.remove(None)
             
 ##############################################################################################################################################################################
 #destroyCommandLine function:
@@ -125,46 +110,15 @@ class Functionality_settings: # the hard coded precedence of what operations to 
 #          sysargv: a list of strings. The list contains one string for each option and argument entered to the command line by the user
 ###############################################################################################################################################################################    
     def checkCommandLine(self, sysargv):
-        the_lone_option = None
-        helpers = []
-        for opt in sysargv:
-            if opt in self.order:
-                the_lone_option = opt #the_lone_option is the option that is being analyzed currently
-                if the_lone_option not in helpers: #if the_lone_option is in helpers already, all of its needed_opts will be, too
-                    if self.needed_opts[the_lone_option][0] != None:
-                        for needed_opt in self.needed_opts[the_lone_option]:
-                            if needed_opt not in sysargv:
-                                sys.exit("option not entered:{no} (needed in order to use {o})".format(no=needed_opt, o=opt))
-                            if needed_opt not in helpers:
-                                helpers.append(needed_opt)       
-                    # find the children: if the stand alone option needs another option to work properly, go and get that. If this new "child" option needs an otion, go and get that. And so on  
-                    helpers_update=helpers.copy()
-                    while len(helpers_update) != 0:
-                        for i in helpers:
-                            if self.needed_opts[i][0] == None:
-                                helpers_update.remove(i)       #get rid of "parents" of the "older generation" that have no children. Kill the spinster aunts!
-                        for i in helpers_update:
-                            for needed_opt in self.needed_opts[i]: 
-                                if needed_opt not in sysargv:
-                                    sys.exit("option not entered:{no} (needed in order to use {o})".format(no=needed_opt, o=opt))    
-                                if needed_opt not in helpers:  #check that two options that are co-dependant do not cause infinite looping
-                                    helpers_update.append(needed_opt)
-                        for i in helpers: #get rid of the 'parents' that are no longer needed to find children
-                            if i in helpers_update:
-                                helpers_update.remove(i)
-                        helpers+=helpers_update
-                    if the_lone_option not in helpers:
-                        helpers.append(the_lone_option)
-        final_options = helpers  
-        for opt in final_options:
-            for key in final_options:
-                if opt not in self.order:
-                    for i in range(self.needed_args[key]): #find out if the needed options and arguments are present in the command line
-                        if sysargv[sysargv.index(arg)-(i+1)] != key: #determine if arg can be treated as a valid positional argument to a needed option  
-                            if key in self.unallowed_opts[opt]:
-                                sys.exit("option {a} cannot be used with {b} ".format(a=opt, b=key))
-                elif key in self.unallowed_opts[opt]:
-                    sys.exit("option {a} cannot be used with {b} ".format(a=opt, b=key))
+        for i in range(len(sysargv)-1):
+            if sysargv[i] in self.order:
+                if self.needed_opts[sysargv[i]][0] != None:
+                    for needed_opt in self.needed_opts[sysargv[i]]:
+                        if needed_opt not in sysargv:
+                            sys.exit("option not entered:{no} (needed in order to use {o})".format(no=needed_opt, o=opt))
+                for key in sysargv:  
+                    if key in self.unallowed_opts[sysargv[i]]:
+                        sys.exit("option {a} cannot be used with {b} ".format(a=sysargv[i], b=key))
         
 ##############################################################################################################################################################################
 #Zpool_options class:
@@ -276,7 +230,7 @@ class Zpool_settings:
         self.vdev_quantity=1
         self.name="zpool"
         self.raid_level="raidz2"
-    def set_vdev_quantity(self, opt_str, value, parser):
+    def set_vdev_quantity(self, options, opt_str, value, parser):
         self.vdev_quantity = value
     def set_zpool_name(self, options, opt_str, value, parser):
         self.name = value
@@ -450,7 +404,7 @@ def main():
     
     try:
         (options, args) = parser.parse_args()
-        
+        print(sys.argv)
         if options.debug == True:
             print("    drive count: {dc} \n    raid level: {rl} \n    zpool name: {zpn} \n    vdev count: {vdc} \n    drives/vdev: {dpd}".format(dc=Zpool_dev.drives_count,\
             rl=Zpool_sett.raid_level, zpn=Zpool_sett.name, vdc=Zpool_sett.vdev_quantity, dpd=int(Zpool_dev.drives_count/Zpool_sett.vdev_quantity)))
