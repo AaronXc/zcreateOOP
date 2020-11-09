@@ -96,15 +96,15 @@ class Functionality_settings: # the hard coded precedence of what operations to 
 #          sysargv: a list of strings. The list contains one string for each option and argument entered to the command line by the user
 ###############################################################################################################################################################################    
     def checkCommandLine(self, sysargv):
-        for i in range(len(sysargv)-1):
-            if sysargv[i] in self.order:
-                if self.needed_opts[sysargv[i]][0] != None:
-                    for needed_opt in self.needed_opts[sysargv[i]]:
+        for opt in sysargv:
+            if opt in self.order:
+                if self.needed_opts[opt][0] != None:
+                    for needed_opt in self.needed_opts[opt]:
                         if needed_opt not in sysargv:
-                            sys.exit("option not entered:{no} (needed in order to use {o})".format(no=needed_opt, o=sysargv[i]))
+                            sys.exit("option not entered:{no} (needed in order to use {o})".format(no=needed_opt, o=opt))
                 for key in sysargv:  
                     if key in self.unallowed_opts[sysargv[i]]:
-                        sys.exit("option {a} cannot be used with {b} ".format(a=sysargv[i], b=key))
+                        sys.exit("option {a} cannot be used with {b} ".format(a=opt, b=key))
         
 ##############################################################################################################################################################################
 #Zpool_options class:
